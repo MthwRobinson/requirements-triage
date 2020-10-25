@@ -4,6 +4,7 @@ tensorboard
 scikit-learn
 seqeval
 psutil
+psycopg2-binary
 sacrebleu
 rouge-score
 tensorflow_datasets
