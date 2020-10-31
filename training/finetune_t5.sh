@@ -1,10 +1,4 @@
 # Script for verifying that run_bart_sum can be invoked from its directory
-
-# Get tiny dataset with cnn_dm format (4 examples for train, val, test)
-# wget https://cdn-datasets.huggingface.co/summarization/cnn_tiny.tgz
-# tar -xzvf cnn_tiny.tgz
-# rm cnn_tiny.tgz
-
 export OUTPUT_DIR_NAME=bart_ghub
 export CURRENT_DIR=${PWD}
 export OUTPUT_DIR=${CURRENT_DIR}/${OUTPUT_DIR_NAME}
@@ -25,5 +19,3 @@ python finetune.py \
 --gpus=0 \
 --do_train "$@" \
 --overwrite_output_dir
-# rm -rf cnn_tiny
-# rm -rf $OUTPUT_DIR
