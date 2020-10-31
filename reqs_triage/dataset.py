@@ -1,8 +1,8 @@
+import random
 import re
 
 import numpy as np
 import pandas as pd
-from sklearn.utils import shuffle
 
 import reqs_triage.database as db
 
@@ -87,6 +87,11 @@ def get_examples(num_examples=500):
         WHERE LENGTH(body) > 1000
         AND array_length(labels, 1) > 0
         AND {label_where_clause}
+        AND package_id != '9848baf8abc94534923ae5accc3812f2'
+        AND package_id != '9cb3f82208254cbda7495b83bd5c6fe7'
+        AND package_id != '973b427f5b9e4998ab31c89f7f2ef0fd'
+        AND package_id != 'b58395124e0c4a5289323dfae4486411'
+        AND package_id != 'd4a0a1cbe53541339c0ad2288b0e2abe'
         ORDER BY RANDOM()
         LIMIT {num_examples}
     """
@@ -97,23 +102,81 @@ def get_examples(num_examples=500):
     return data
 
 
-def prepare_dataset(directory, num_examples=500):
-    data = get_examples(num_examples=num_examples)
-    data = shuffle(data)
-    data.reset_index(drop=True, inplace=True)
+def train_test_split(package_ids):
+    """Splits the package ids into the training and tests sets, keeping all of the
+    issues from the same package together.
 
-    test_start = int(0.7 * len(data))
-    val_start = int(0.9 * len(data))
+    Parameters
+    ----------
+    package_ids : list
+        A list of package ids
 
+    Returns
+    -------
+    train_ids : list
+        The package ids in the training set
+    test_ids : list
+        The package ids in the test set
+    val_ids : list
+        The package ids in the validation set
+    """
+    random.shuffle(package_ids)
+
+    test_start = int(0.7 * len(package_ids))
+    val_start = int(0.9 * len(package_ids))
+
+    train_ids = package_ids[:test_start]
+    test_ids = package_ids[test_start:val_start]
+    val_ids = package_ids[val_start:]
+
+    return train_ids, test_ids, val_ids
+
+
+def save_dataset(data, directory, filename):
+    """Saves the data in a format that can be processed by the transformers training
+    script.
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        The data set to save
+    directory : str
+        The target directory
+    filename : str
+        The file prefix
+    """
+    print(f"Dataset size for {filename}: {len(data)}")
     csv_kwargs = {"index": False, "header": False, "line_terminator": "\n"}
 
-    data[:test_start]["text"].to_csv(f"{directory}/train.source", **csv_kwargs)
-    data[:test_start]["labels"].to_csv(f"{directory}/train.target", **csv_kwargs)
+    data["text"].to_csv(f"{directory}/{filename}.source", **csv_kwargs)
+    data["labels"].to_csv(f"{directory}/{filename}.target", **csv_kwargs)
 
-    data[test_start:val_start]["text"].to_csv(f"{directory}/test.source", **csv_kwargs)
-    data[test_start:val_start]["labels"].to_csv(
-        f"{directory}/test.target", **csv_kwargs
-    )
+    with open(f"{directory}/{filename}.packages", "w") as f:
+        for package_id in data["package_id"].unique():
+            f.write(f"{package_id}\n")
 
-    data[val_start:]["text"].to_csv(f"{directory}/val.source", **csv_kwargs)
-    data[val_start:]["labels"].to_csv(f"{directory}/val.target", **csv_kwargs)
+
+def prepare_dataset(directory, num_examples=500):
+    """Queries the postgres database, normalizes the labels, and save the dataset in a
+    format that can be processed by the transformers training script.
+
+    Parameters
+    ----------
+    directory : str
+        The directory to save the output
+    num_examples : int
+        The number of examples to pull from the database
+    """
+    data = get_examples(num_examples=num_examples)
+
+    package_ids = list(data["package_id"].unique())
+    train_ids, test_ids, val_ids = train_test_split(package_ids)
+
+    train = data[data["package_id"].isin(train_ids)]
+    save_dataset(train, directory, "train")
+
+    test = data[data["package_id"].isin(test_ids)]
+    save_dataset(test, directory, "test")
+
+    val = data[data["package_id"].isin(val_ids)]
+    save_dataset(val, directory, "val")
