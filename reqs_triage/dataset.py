@@ -37,9 +37,20 @@ NORMALIZED_LABELS = {
 
 
 def remove_code_blocks(issue_text):
+    if not isinstance(issue_text, str):
+        return ""
     issue_text = re.sub(CODE_BLOCK_RE, "", issue_text, 0, re.DOTALL)
     issue_text = issue_text.replace("\r", " ").replace("\n", " ")
     return issue_text
+
+
+@np.vectorize
+def build_text(title, body):
+    if not body:
+        return title
+    else:
+        body = body[:1000]
+        return f"feature request classification: {title} --- {body}"
 
 
 def labels_to_text(labels):
@@ -68,8 +79,8 @@ def _normalize_label(label):
     label : str
         The normalized label
     """
-    label = label.lower()
-    return NORMALIZED_LABELS.get(label, None)
+    label = NORMALIZED_LABELS.get(label, label)
+    return str(int(label == "feature request"))
 
 
 def _build_label_where_clause():
@@ -84,20 +95,15 @@ def get_examples(num_examples=500):
     sql = f"""
         SELECT id, package_id, title, body, labels
         FROM open_source.issues
-        WHERE LENGTH(body) > 1000
-        AND array_length(labels, 1) > 0
-        AND {label_where_clause}
-        AND package_id != '9848baf8abc94534923ae5accc3812f2'
-        AND package_id != '9cb3f82208254cbda7495b83bd5c6fe7'
-        AND package_id != '973b427f5b9e4998ab31c89f7f2ef0fd'
-        AND package_id != 'b58395124e0c4a5289323dfae4486411'
-        AND package_id != 'd4a0a1cbe53541339c0ad2288b0e2abe'
+        WHERE array_length(labels, 1) = 1
+        AND length(body) > 100
+        AND title IS NOT NULL
         ORDER BY RANDOM()
         LIMIT {num_examples}
     """
     data = pd.read_sql(sql, connection)
     data["body"] = data["body"].apply(lambda body: remove_code_blocks(body))
-    data["text"] = data["title"] + " " + data["body"]
+    data["text"] = build_text(data["title"], data["body"])
     data["labels"] = data["labels"].apply(lambda labels: labels_to_text(labels))
     return data
 
