@@ -1,3 +1,4 @@
+import os
 import random
 import re
 
@@ -190,3 +191,29 @@ def prepare_dataset(directory, num_examples=500):
 
     val = data[data["package_id"].isin(val_ids)]
     save_dataset(val, directory, "val")
+
+
+def read_dataset(directory, prefix):
+    """Reads the data set from
+
+    Parameters
+    ----------
+    directory : str
+        The target directory
+    prefix : str
+        The file prefix
+
+    Returns
+    -------
+    data : pd.DataFrame
+        A dataframe with the source text for the requirements and the label
+    """
+    source_filename = os.path.join(directory, f"{prefix}.source")
+    with open(source_filename, "r") as f:
+        source = f.read().split("\n")
+
+    target_filename = os.path.join(directory, f"{prefix}.target")
+    with open(target_filename, "r") as f:
+        target = f.read().split("\n")
+
+    return pd.DataFrame({"source": source, "target": target})
