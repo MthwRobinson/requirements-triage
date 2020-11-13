@@ -11,24 +11,24 @@ CODE_BLOCK_RE = r"(```).*?(```)"
 # The source labels are all labels that appeared at least 400 times in the dataset
 NORMALIZED_LABELS = {
     "bug": "bug",
-    "enhancement": "feature request",
+    "enhancement": "feature",
     "question": "question",
-    "feature": "feature request",
+    "feature": "feature",
     "documentation": "documentation",
     "help wanted": "support",
-    "feature request": "feature request",
+    "feature request": "feature",
     "dependencies": "dependencies",
     "discussion": "discussion",
-    "improvement": "feature request",
+    "improvement": "feature",
     "support": "support",
-    "type: feature": "feature request",
-    "feature-request": "feature request",
+    "type: feature": "feature",
+    "feature-request": "feature",
     "type: question": "support",
     "type: support": "support",
-    "suggestion": "feature request",
+    "suggestion": "feature",
     "type:bug": "bug",
-    "new feature": "feature request",
-    "type=enhancement": "feature request",
+    "new feature": "feature",
+    "type=enhancement": "feature",
     ":bug: bug": "bug",
     "type:bug/performance": "bug",
     "bug report": "bug",
@@ -46,22 +46,24 @@ def remove_code_blocks(issue_text):
 
 @np.vectorize
 def build_text(title, body):
-    if not body:
-        return title
+    title = title.replace("\n", " ")
+    body = body[:1000].replace("\n", " ")
+    text = f"{title} --- {body}"
+    if len(text.split()) < 10:
+        return ""
     else:
-        body = body[:1000]
-        return f"feature request classification: {title} --- {body}"
+        return f"multilabel classification: {text}"
 
 
 def labels_to_text(labels):
-    normalized_labels = []
+    normalized_labels = set()
     for label in labels:
         normalized_label = _normalize_label(label)
         if normalized_label:
-            normalized_labels.append(normalized_label)
+            normalized_labels.add(normalized_label)
 
     if normalized_labels:
-        return "; ".join(normalized_labels)
+        return " , ".join(list(normalized_labels))
     else:
         return ""
 
@@ -79,8 +81,7 @@ def _normalize_label(label):
     label : str
         The normalized label
     """
-    label = NORMALIZED_LABELS.get(label, label)
-    return str(int(label == "feature request"))
+    return NORMALIZED_LABELS.get(label.lower(), None)
 
 
 def _build_label_where_clause():
@@ -95,9 +96,10 @@ def get_examples(num_examples=500):
     sql = f"""
         SELECT id, package_id, title, body, labels
         FROM open_source.issues
-        WHERE array_length(labels, 1) = 1
-        AND length(body) > 100
+        WHERE {label_where_clause}
         AND title IS NOT NULL
+        AND length(TITLE) > 20
+        AND array_length(labels, 1) = 1
         ORDER BY RANDOM()
         LIMIT {num_examples}
     """
@@ -128,7 +130,7 @@ def train_test_split(package_ids):
     """
     random.shuffle(package_ids)
 
-    test_start = int(0.7 * len(package_ids))
+    test_start = int(0.8 * len(package_ids))
     val_start = int(0.9 * len(package_ids))
 
     train_ids = package_ids[:test_start]
@@ -174,6 +176,8 @@ def prepare_dataset(directory, num_examples=500):
         The number of examples to pull from the database
     """
     data = get_examples(num_examples=num_examples)
+    data = data[data["labels"] != ""]
+    data = data[data["text"] != ""]
 
     package_ids = list(data["package_id"].unique())
     train_ids, test_ids, val_ids = train_test_split(package_ids)
