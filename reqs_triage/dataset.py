@@ -37,6 +37,14 @@ NORMALIZED_LABELS = {
 }
 
 
+ADDITIONAL_LABELS = {
+    "performance": "performance",
+    "windows": "os",
+    "ios": "os",
+    "android": "os"
+}
+
+
 def remove_code_blocks(issue_text):
     if not isinstance(issue_text, str):
         return ""
