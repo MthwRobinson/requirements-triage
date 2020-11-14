@@ -94,5 +94,56 @@ def t5_inference(data):
         result = summarizer(source, max_length=2)
         t5_inference.append(result[0]["summary_text"])
 
-    data["t5"] = t5_inference
+    data["t5_label"] = t5_inference
+    data["t5"] = (data["t5_label"] == "feature").astype(int)
+    return data
+
+
+def _model_inference(label, classifier, vectorizer, data):
+    """Performs inference on the dataset using each of the trained sklearn models
+
+    Parameters
+    ----------
+    label : str
+        The label for the model, which is used in the column name
+    classifier : skelarn.Classifier
+        An sklearn style classifier
+    vectorizer : skelarn.Vectorizer
+        An sklearn style vectorizer
+    data : pd.DataFrame
+        A dataframe with the source requirement text and label
+
+    Returns
+    -------
+    data : pd.DataFrame
+        A dataframe with the source requirement text and label and the T5 inference
+        added
+    """
+    X = vectorizer.transform(data["source"])
+    data[label] = classifier.predict(X)
+    return data
+
+
+def inference(data):
+    """Performs inference on the dataset using each of the trained sklearn models
+
+    Parameters
+    ----------
+    data : pd.DataFrame
+        A dataframe with the source requirement text and label
+
+    Returns
+    -------
+    data : pd.DataFrame
+        A dataframe with the source requirement text and label and the T5 inference
+        added
+    """
+    for label, _, _ in tqdm.tqdm(MODELS):
+        with open(os.path.join(MODEL_DIR, f"{label}-classifier.pkl"), "rb") as f:
+            classifier = pickle.load(f)
+
+        with open(os.path.join(MODEL_DIR, f"{label}-vectorizer.pkl"), "rb") as f:
+            vectorizer = pickle.load(f)
+
+        data = _model_inference(label, classifier, vectorizer, data)
     return data
