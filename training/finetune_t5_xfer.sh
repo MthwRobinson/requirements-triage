@@ -14,7 +14,7 @@ python finetune.py \
 --train_batch_size=2 \
 --eval_batch_size=2 \
 --output_dir=$OUTPUT_DIR \
---num_train_epochs=2  \
+--num_train_epochs=1  \
 --val_metric=loss \
 --gpus=0 \
 --do_train "$@" \
