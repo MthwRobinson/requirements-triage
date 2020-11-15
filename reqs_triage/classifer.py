@@ -71,7 +71,7 @@ def train_and_save_models():
             pickle.dump(vectorizer, f)
 
 
-def t5_inference(data):
+def t5_inference(data, xfer=False):
     """Performs inference on the dataset using the trained T5 model
 
     Parameters
@@ -85,7 +85,8 @@ def t5_inference(data):
         A dataframe with the source requirement text and label and the T5 inference
         added
     """
-    model_path = os.path.join(MODEL_DIR, "t5_multilabel_base", "best_tfmr")
+    model_name = "t5_multilabel_base" if not xfer else "t5_multilabel_base_xfer"
+    model_path = os.path.join(MODEL_DIR, model_name, "best_tfmr")
     summarizer = pipeline("summarization", model=model_path)
 
     t5_inference = []
