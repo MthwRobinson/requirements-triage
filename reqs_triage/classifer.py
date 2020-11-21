@@ -71,8 +71,8 @@ def train_and_save_models():
             pickle.dump(vectorizer, f)
 
 
-def t5_inference(data, xfer=False):
-    """Performs inference on the dataset using the trained T5 model
+def transformer_inference(data, model_name="bart", size="large", xfer=False):
+    """Performs inference on the dataset using the trained transformer model
 
     Parameters
     ----------
@@ -85,18 +85,19 @@ def t5_inference(data, xfer=False):
         A dataframe with the source requirement text and label and the T5 inference
         added
     """
-    model_name = "t5_multilabel_base" if not xfer else "t5_multilabel_base_xfer"
-    model_path = os.path.join(MODEL_DIR, model_name, "best_tfmr")
+    model_postfix = f"multilabel_{size}" if not xfer else f"multilabel_{size}_xfer"
+    model_path = os.path.join(MODEL_DIR, f"{model_name}_{model_postfix}", "best_tfmr")
     summarizer = pipeline("summarization", model=model_path)
 
     t5_inference = []
     for i in tqdm.tqdm(data.index):
         source = data.loc[i]["source"]
-        result = summarizer(source, max_length=2)
-        t5_inference.append(result[0]["summary_text"])
+        result = summarizer(source, max_length=6)
+        t5_inference.append(result[0]["summary_text"].strip())
 
-    data["t5_label"] = t5_inference
-    data["t5"] = (data["t5_label"] == "feature").astype(int)
+    data[f"{model_name}_label"] = t5_inference
+    target_label = "performance" if xfer else "feature"
+    data[model_name] = (data[f"{model_name}_label"] == target_label).astype(int)
     return data
 
 

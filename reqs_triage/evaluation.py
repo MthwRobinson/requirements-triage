@@ -76,7 +76,7 @@ def _check_column(column):
     good_column : bool
         True if it is a column that we want to evaluate
     """
-    if column == "t5":
+    if ("t5" in column or "bart" in column) and "label" not in column:
         return True
     elif column.endswith("tfidf") or column.endswith("bow"):
         return True
